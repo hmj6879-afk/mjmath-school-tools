@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수식 하이로우 - 라이브 멀티플레이</title>
+    <script defer src="https://unpkg.com/mathlive@0.98.6/dist/mathlive.min.js"></script>
+
+    <style>
+        :root { --primary: #2563eb; --bg-color: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b; --border: #e2e8f0; }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 900px; background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 30px; box-sizing: border-box; }
+        h1, h2, h3 { text-align: center; margin-top: 0; }
+        .btn { background-color: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin: 5px; transition: all 0.2s; }
+        .btn:hover { background-color: #1d4ed8; }
+        .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-outline:hover { background-color: #eff6ff; }
+        .hidden { display: none !important; }
+        
+        .rule-box { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 15px; line-height: 1.6; color: #1e3a8a; text-align: center;}
+        
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .team-card { border: 1px solid var(--border); border-radius: 12px; padding: 15px; text-align: center; background: #fff; transition: all 0.3s; }
+        .team-card.submitted { border-color: #10b981; background: #ecfdf5; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+        .score-display { font-size: 22px; font-weight: bold; color: var(--primary); margin: 8px 0; }
+        .bet-display { font-size: 13px; color: #ef4444; font-weight: bold; }
+        
+        .input-panel { background: #f1f5f9; padding: 20px; border-radius: 12px; margin-top: 20px; }
+        
+        math-field { font-size: 28px; background: #fff; border: 2px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 15px; width: 100%; box-sizing: border-box; cursor: text; min-height: 70px; display: flex; align-items: center; }
+        math-field:focus-within { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); }
+        math-field::part(virtual-keyboard-toggle), math-field::part(menu-toggle) { display: none !important; }
+
+        .keypad-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+        .controls { margin-bottom: 20px; }
+        .key { padding: 15px 0; font-size: 20px; background: #fff; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .key:active { background: #e2e8f0; }
+        .key.op { background: #e0f2fe; color: #0284c7; }
+        
+        select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; margin-bottom: 15px; }
+        input[type="number"] { padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid var(--border); padding: 12px; text-align: center; font-size: 16px; vertical-align: middle; }
+        th { background: #f8fafc; }
+        .win-row { background: #fef08a; font-weight: bold; }
+        .fail-row { color: #dc2626; text-decoration: line-through; }
+        
+        #sync-status { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 20px; font-size: 12px; z-index: 1000; }
+        
+        .timer-panel { background: #fef2f2; border: 2px solid #fecaca; border-radius: 12px; padding: 15px; margin: 15px 0; text-align: center; }
+        .timer-display { font-size: 36px; font-weight: bold; color: #dc2626; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body>
+
+<audio id="bgm" loop>
+    <source src="여기에_MP3_파일_링크를_넣어주세요.mp3" type="audio/mpeg">
+</audio>
+
+<div id="sync-status">서버 연결 대기 중...</div>
+
+<div class="container" id="app">
+    
+    <div id="screen-startup">
+        <h1>🎲 수식 하이로우</h1>
+        <div class="rule-box">현재 기기에서 플레이할 <strong>조</strong>를 선택해주세요.</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+            <button class="btn btn-outline" onclick="startGame(0)">1조 학생용</button>
+            <button class="btn btn-outline" onclick="startGame(1)">2조 학생용</button>
+            <button class="btn btn-outline" onclick="startGame(2)">3조 학생용</button>
+            <button class="btn btn-outline" onclick="startGame(3)">4조 학생용</button>
+            <button class="btn btn-outline" onclick="startGame(4)">5조 학생용</button>
+            <button class="btn btn-outline" onclick="startGame(5)">6조 학생용</button>
+            <button class="btn btn-outline" onclick="startGame(6)">7조 학생용</button>
+        </div>
+        <div style="text-align: center; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+            <button class="btn" style="background-color: #64748b; width: 100%;" onclick="startGame('teacher')">
+                👨‍🏫 교사용 메인 화면 (전체 현황 및 정산)
+            </button>
+        </div>
+    </div>
+
+    <!-- 게임 대기방 (Lobby) -->
+    <div id="screen-lobby" class="hidden" style="text-align: center; padding: 50px 20px;">
+        <h1 style="font-size: 50px; margin-bottom: 20px;">☕</h1>
+        <div id="lobby-msg"></div>
+    </div>
+
+    <div id="screen-dashboard" class="hidden">
+        <h1>👨‍🏫 수식 하이로우 메인보드</h1>
+        
+        <div class="timer-panel">
+            <div id="teacher-timer-display" class="timer-display">00:00</div>
+            <!-- 수합 중 알림 메시지 공간 -->
+            <div id="teacher-timer-msg" class="hidden" style="color: #ef4444; font-weight: bold; margin-bottom: 15px;"></div>
+            
+            <div>
+                <input type="number" id="timer-m" value="3" min="0" max="10" style="width: 60px;"> 분
+                <input type="number" id="timer-s" value="0" min="0" max="59" style="width: 60px;"> 초
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="btn" onclick="startTimer()">타이머 시작</button>
+                <button class="btn btn-outline" onclick="stopTimer()">정지/초기화</button>
+                <button class="btn btn-outline" id="btn-bgm" onclick="toggleBGM()" style="margin-left: 10px; border-color: #8b5cf6; color: #8b5cf6;">🎵 BGM 켜기</button>
+            </div>
+        </div>
+
+        <div class="rule-box" id="teacher-round-rules"></div>
+        <h2 id="teacher-round-title">라운드 1</h2>
+        <div class="dashboard" id="dashboard-grid"></div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn" onclick="calculateResults()">결과 확인 (라운드 종료)</button>
+        </div>
+    </div>
+
+    <div id="screen-submission" class="hidden">
+        <div id="team-fixed-display" style="margin-bottom: 15px; font-size: 22px; font-weight: bold; color: var(--primary); text-align: center; background: #e0f2fe; padding: 12px; border-radius: 8px;">
+            [ <span id="fixed-team-name">1조</span> ]
+        </div>
+        
+        <div id="student-timer-display" class="hidden timer-display" style="text-align: center;">00:00</div>
+        <div class="rule-box" id="student-round-rules" style="font-size: 16px;"></div>
+        
+        <div class="input-panel">
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">배팅 타겟 선택</label>
+            <select id="target-select" onchange="toggleSwingInput()">
+                <option value="1">1에 가깝게 (승리 시 +10점)</option>
+                <option value="20">20에 가깝게 (승리 시 +10점)</option>
+                <option value="swing">스윙: 1과 20 모두 (승리 +30점 / 패배 -10점)</option>
+            </select>
+
+            <label style="font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px;" id="f1-label">수식 1 입력 (타겟 1용)</label>
+            <math-field id="mf1" math-virtual-keyboard-policy="manual"></math-field>
+            
+            <div id="f2-container" class="hidden">
+                <label style="font-weight: bold; display: block; margin-top: 10px; margin-bottom: 5px;">수식 2 입력 (타겟 20용)</label>
+                <math-field id="mf2" math-virtual-keyboard-policy="manual"></math-field>
+            </div>
+
+            <div id="keypad-main" class="keypad-grid"></div>
+            <div id="keypad-controls" class="keypad-grid controls"></div>
+
+            <div style="text-align: center;">
+                <button class="btn" style="width: 100%; padding: 15px; font-size: 18px;" onclick="submitTeamData(false)">제출 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-waiting" class="hidden" style="text-align: center; padding: 50px 20px;">
+        <h1 style="font-size: 50px; margin-bottom: 20px;">⏳</h1>
+        <h2>제출이 완료되었습니다!</h2>
+        <p style="color: #64748b; font-size: 18px; margin-top: 10px;">다른 조의 제출이 끝날 때까지 선생님의 화면을 주목해주세요.</p>
+    </div>
+
+    <div id="screen-result" class="hidden">
+        <h2>라운드 결과</h2>
+        <div id="result-content"></div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="btn hidden" id="next-btn" onclick="nextRound()">다음 라운드 준비</button>
+            <p id="wait-msg" class="hidden" style="color:var(--primary); font-weight:bold; font-size: 18px;">선생님이 다음 라운드를 준비 중입니다...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 🚨 구글 앱스 스크립트 웹앱 주소를 입력하세요
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwB7zeKCH5oQ-I04gwSrQyWlX61iygBhZDDUXYKp8gWTqWW1xnHp77cu2YLBbnZK_us/exec";
+    // ==========================================
+
+    let gameState = {
+        currentRound: 1,
+        status: "playing",
+        gameSeed: Math.random(), 
+        timer: { endTime: 0, duration: 0, isRunning: false },
+        teams: Array.from({length: 7}, (_, i) => ({ id: i, score: 0, target: '', f1: '', f2: '', submitted: false }))
+    };
+    
+    let maxRounds = 8;
+    let roundNumbers = [];
+    let roundOperators = [];
+    let activeMfId = 'mf1';
+    let isTeacherMode = false;
+    let myTeamIdx = 0;
+    let lastRenderedRound = 0;
+    let isBgmPlaying = false;
+
+    let lastDataString = "";
+    let syncTimeout = null;
+    let isFetching = false;
+    let isPushing = false; 
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const mf1 = document.getElementById('mf1');
+        const mf2 = document.getElementById('mf2');
+        mf1.addEventListener('focusin', () => activeMfId = 'mf1');
+        mf2.addEventListener('focusin', () => activeMfId = 'mf2');
+        
+        setInterval(updateTimerDisplay, 500);
+    });
+
+    function toggleBGM() {
+        const bgm = document.getElementById('bgm');
+        const btn = document.getElementById('btn-bgm');
+        
+        if (isBgmPlaying) {
+            bgm.pause();
+            btn.innerText = "🎵 BGM 켜기";
+            btn.style.backgroundColor = "transparent";
+            btn.style.color = "#8b5cf6";
+        } else {
+            bgm.play().catch(e => {
+                alert("음악 파일 링크를 확인해주세요. (브라우저 정책상 자동재생이 차단될 수 있습니다.)");
+            });
+            btn.innerText = "🔇 BGM 끄기";
+            btn.style.backgroundColor = "#8b5cf6";
+            btn.style.color = "white";
+        }
+        isBgmPlaying = !isBgmPlaying;
+    }
+
+    // --- 통신(동기화) 로직 ---
+    function pollGameState() {
+        if (!GAS_URL.startsWith("http")) return; 
+        if (isFetching || isPushing) return; 
+        
+        isFetching = true;
+        fetch(GAS_URL)
+            .then(res => res.json())
+            .then(data => {
+                isFetching = false;
+                if (isPushing) return; // 전송 중에 온 메아리 데이터 무시
+                
+                document.getElementById('sync-status').innerText = "🟢 실시간 연동 중";
+                
+                if (!data.timer) data.timer = { endTime: 0, duration: 0, isRunning: false };
+                if (!data.gameSeed) data.gameSeed = 0.827364;
+                
+                let currentStr = JSON.stringify(data);
+                if (lastDataString !== currentStr) {
+                    lastDataString = currentStr;
+                    gameState = data;
+                    updateUI(); 
+                }
+                syncTimeout = setTimeout(pollGameState, 2000); // 폴링 2초로 단축하여 체감 속도 향상
+            })
+            .catch(err => {
+                isFetching = false;
+                document.getElementById('sync-status').innerText = "🔴 연결 지연 (재시도 중)";
+                syncTimeout = setTimeout(pollGameState, 3500);
+            });
+    }
+
+    function updateUI() {
+        document.getElementById('screen-dashboard').classList.add('hidden');
+        document.getElementById('screen-submission').classList.add('hidden');
+        document.getElementById('screen-waiting').classList.add('hidden');
+        document.getElementById('screen-result').classList.add('hidden');
+        document.getElementById('screen-lobby').classList.add('hidden');
+
+        if (gameState.status === "waiting") {
+            document.getElementById('screen-lobby').classList.remove('hidden');
+            if (isTeacherMode) {
+                document.getElementById('lobby-msg').innerHTML = `
+                    <h2>게임 대기방</h2>
+                    <p style="color: #64748b; font-size: 18px; margin-top: 10px;">학생들이 패드에서 조를 선택할 수 있도록 안내해 주세요.</p>
+                    <button class="btn" onclick="startNewGameFromLobby()" style="margin-top: 20px; padding: 15px 30px; font-size: 20px;">🚀 새로운 게임 시작</button>
+                `;
+            } else {
+                document.getElementById('lobby-msg').innerHTML = `
+                    <h2>대기 중...</h2>
+                    <p style="color: #64748b; font-size: 18px; margin-top: 10px;">선생님이 새로운 게임을 준비하고 있습니다.</p>
+                `;
+            }
+            return; 
+        }
+
+        if (isTeacherMode) {
+            if (gameState.status === "playing") {
+                document.getElementById('screen-dashboard').classList.remove('hidden');
+                if (lastRenderedRound !== gameState.currentRound) initRoundLocal();
+                renderDashboard();
+            } else {
+                renderResultsHTML();
+                document.getElementById('screen-result').classList.remove('hidden');
+            }
+        } else {
+            if (gameState.status === "result") {
+                renderResultsHTML();
+                document.getElementById('screen-result').classList.remove('hidden');
+            } else {
+                if (lastRenderedRound !== gameState.currentRound) initRoundLocal();
+                if (gameState.teams[myTeamIdx].submitted) {
+                    document.getElementById('screen-waiting').classList.remove('hidden');
+                } else {
+                    document.getElementById('screen-submission').classList.remove('hidden');
+                }
+            }
+        }
+    }
+
+    function pushGameState(action, payload, callback) {
+        if (!GAS_URL.startsWith("http")) return;
+        document.getElementById('sync-status').innerText = "⏳ 데이터 전송 중...";
+        
+        if (syncTimeout) clearTimeout(syncTimeout);
+        isPushing = true; 
+
+        fetch(`${GAS_URL}?action=${action}`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        }).then(() => {
+            isPushing = false; 
+            document.getElementById('sync-status').innerText = "🟢 실시간 연동 중";
+            if (callback) callback(); 
+            else pollGameState(); 
+        }).catch(() => {
+            isPushing = false;
+            document.getElementById('sync-status').innerText = "🔴 전송 실패";
+            syncTimeout = setTimeout(pollGameState, 2000);
+        });
+    }
+
+    function startNewGameFromLobby() {
+        if (!isTeacherMode) return;
+        gameState.currentRound = 1;
+        gameState.status = "playing";
+        gameState.timer = { endTime: 0, duration: 0, isRunning: false };
+        gameState.gameSeed = Math.random();
+        gameState.teams = Array.from({length: 7}, (_, i) => ({ id: i, score: 0, target: '', f1: '', f2: '', submitted: false }));
+        
+        pushGameState("updateState", gameState);
+    }
+
+    // --- [핵심] 오차가 없는 타이머 로직 ---
+    function startTimer() {
+        if(!isTeacherMode) return;
+        let m = parseInt(document.getElementById('timer-m').value) || 0;
+        let s = parseInt(document.getElementById('timer-s').value) || 0;
+        let duration = (m * 60 + s) * 1000;
+        if(duration <= 0) return;
+
+        gameState.timer = {
+            duration: duration,
+            endTime: Date.now() + duration + 2500, // 패드 동기화를 위해 2.5초 버퍼 추가
+            isRunning: true
+        };
+        pushGameState("updateState", gameState);
+    }
+
+    function stopTimer() {
+        if(!isTeacherMode) return;
+        gameState.timer = { endTime: 0, duration: 0, isRunning: false };
+        pushGameState("updateState", gameState);
+    }
+
+    function updateTimerDisplay() {
+        if (!gameState.timer || !gameState.timer.isRunning) {
+            document.getElementById('teacher-timer-display').innerText = "00:00";
+            if (document.getElementById('teacher-timer-msg')) document.getElementById('teacher-timer-msg').classList.add('hidden');
+            document.getElementById('student-timer-display').classList.add('hidden');
+            return;
+        }
+
+        let now = Date.now();
+        let duration = gameState.timer.duration || (gameState.timer.endTime - now);
+        let startTime = gameState.timer.endTime - duration;
+
+        // 1. 대기 시간 (버퍼 구간): 2.5초 동안 모든 패드가 "동기화 중" 메시지를 보며 대기합니다.
+        if (now < startTime) {
+            let readySec = Math.ceil((startTime - now) / 1000);
+            document.getElementById('teacher-timer-display').innerText = `동기화 중... ${readySec}`;
+            
+            if (isTeacherMode && document.getElementById('teacher-timer-msg')) {
+                document.getElementById('teacher-timer-msg').classList.add('hidden');
+            }
+            
+            if (!isTeacherMode && gameState.status === "playing" && !gameState.teams[myTeamIdx].submitted) {
+                document.getElementById('student-timer-display').innerText = `⏳ 타이머 동기화 중... ${readySec}`;
+                document.getElementById('student-timer-display').classList.remove('hidden');
+            }
+            return;
+        }
+
+        // 2. 본격적인 타이머 진행
+        let timeLeft = gameState.timer.endTime - now;
+        
+        if (timeLeft <= 0) {
+            document.getElementById('teacher-timer-display').innerText = "00:00";
+            document.getElementById('student-timer-display').innerText = "00:00";
+            
+            // 선생님 화면: 학생 답안 수합 알림 (답답함 해소)
+            if (isTeacherMode && document.getElementById('teacher-timer-msg')) {
+                document.getElementById('teacher-timer-msg').innerText = "🚨 타이머 종료! 학생 답안을 강제 수합 중입니다...";
+                document.getElementById('teacher-timer-msg').classList.remove('hidden');
+            }
+            
+            // 학생 화면: 즉시 강제 제출 처리
+            if (!isTeacherMode && gameState.status === "playing" && !gameState.teams[myTeamIdx].submitted) {
+                gameState.teams[myTeamIdx].submitted = true; 
+                document.getElementById('student-timer-display').innerText = "제출 중...";
+                
+                // 디도스 방지를 위해 기존 300ms 딜레이를 150ms로 절반 축소 (수합 속도 2배 향상)
+                let randomDelay = myTeamIdx * 150; 
+                setTimeout(() => {
+                    submitTeamData(true); 
+                }, randomDelay);
+            }
+        } else {
+            let totalSeconds = Math.floor(timeLeft / 1000);
+            let m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            let s = (totalSeconds % 60).toString().padStart(2, '0');
+            let displayStr = `${m}:${s}`;
+            
+            document.getElementById('teacher-timer-display').innerText = displayStr;
+            if (isTeacherMode && document.getElementById('teacher-timer-msg')) {
+                document.getElementById('teacher-timer-msg').classList.add('hidden');
+            }
+            
+            if (!isTeacherMode && gameState.status === "playing" && !gameState.teams[myTeamIdx].submitted) {
+                document.getElementById('student-timer-display').innerText = `⏳ 남은 시간: ${displayStr}`;
+                document.getElementById('student-timer-display').classList.remove('hidden');
+            }
+        }
+    }
+
+    function startGame(mode) {
+        document.getElementById('screen-startup').classList.add('hidden');
+
+        if (mode === 'teacher') {
+            isTeacherMode = true;
+            document.getElementById('next-btn').classList.remove('hidden');
+        } else {
+            isTeacherMode = false;
+            myTeamIdx = parseInt(mode);
+            document.getElementById('fixed-team-name').innerText = `${myTeamIdx + 1}조`;
+            document.getElementById('wait-msg').classList.remove('hidden'); 
+        }
+
+        pollGameState(); 
+    }
+
+    function getUniqueNumbers(count) {
+        let nums = new Set();
+        let baseSeed = (gameState.gameSeed || 0.12345) * 1000000;
+        let seed = baseSeed + (gameState.currentRound * 1234);
+        
+        while(nums.size < count) {
+            let x = Math.sin(seed++) * 10000;
+            let val = Math.floor((x - Math.floor(x)) * 11);
+            nums.add(val);
+        }
+        return Array.from(nums).sort((a,b)=>a-b);
+    }
+
+    function setupRoundRules() {
+        if (gameState.currentRound <= 2) {
+            roundNumbers = getUniqueNumbers(4);
+            roundOperators = ['+', '-', '÷'];
+            return `<strong>[1~2 라운드 규칙]</strong><br>제시된 숫자 4개와 <strong>[ +, -, ÷ ]</strong> 기호를 1번씩 모두 사용하세요.`;
+        } else if (gameState.currentRound <= 4) {
+            roundNumbers = getUniqueNumbers(4);
+            roundOperators = ['+', '-', '÷', '√'];
+            return `<strong>[3~4 라운드 규칙]</strong><br>제시된 숫자 4개와 <strong>[ +, -, ÷, √ ]</strong> 기호를 1번씩 사용하세요.<br>
+                    <span style="color:#047857; font-weight:bold;">※ 루트(√) 기호 안에는 반드시 '숫자 하나'만 들어갈 수 있습니다.</span>`;
+        } else {
+            roundNumbers = getUniqueNumbers(gameState.currentRound <= 6 ? 4 : 5);
+            roundOperators = gameState.currentRound <= 6 ? ['+', '-', '÷', '√'] : ['+', '-', '÷', '×', '√'];
+            return `<strong>[${gameState.currentRound <= 6 ? '5~6' : '7~8'} 라운드 규칙]</strong><br>제시된 숫자 ${gameState.currentRound <= 6 ? '4' : '5'}개와 <strong>[ ${roundOperators.join(', ')} ]</strong> 기호를 1번씩 사용하세요.<br>
+                    <span style="color:#b91c1c; font-weight:bold;">※ 자유로운 루트 허용: 루트 안에 숫자와 연산 기호가 자유롭게 들어갈 수 있습니다.</span>`;
+        }
+    }
+
+    function initRoundLocal() {
+        lastRenderedRound = gameState.currentRound;
+        let ruleText = setupRoundRules();
+        let ruleHTML = `이번 라운드 사용 숫자: <strong style="font-size:24px; color:#d97706;">[ ${roundNumbers.join(', ')} ]</strong><br><br>${ruleText}`;
+        
+        if (isTeacherMode) {
+            document.getElementById('teacher-round-rules').innerHTML = ruleHTML;
+            document.getElementById('teacher-round-title').innerText = `라운드 ${gameState.currentRound} / ${maxRounds}`;
+            renderDashboard();
+        } else {
+            document.getElementById('student-round-rules').innerHTML = ruleHTML;
+            document.getElementById('mf1').setValue('');
+            document.getElementById('mf2').setValue('');
+            document.getElementById('target-select').value = "1";
+            activeMfId = 'mf1';
+            toggleSwingInput();
+            renderKeypad();
+        }
+    }
+
+    function renderDashboard() {
+        if (!isTeacherMode) return;
+        const grid = document.getElementById('dashboard-grid');
+        grid.innerHTML = '';
+        gameState.teams.forEach((t, i) => {
+            const card = document.createElement('div');
+            card.className = `team-card ${t.submitted ? 'submitted' : ''}`;
+            card.innerHTML = `
+                <div><strong>${i + 1}조</strong></div>
+                <div class="score-display">${t.score}점</div>
+                <div class="bet-display" style="color: ${t.submitted ? '#059669' : '#ef4444'}">${t.submitted ? '✔️ 제출 완료' : '입력 중...'}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function renderKeypad() {
+        const main = document.getElementById('keypad-main');
+        const controls = document.getElementById('keypad-controls');
+        main.innerHTML = ''; controls.innerHTML = '';
+        
+        roundNumbers.forEach(num => { main.innerHTML += `<button class="key" onclick="appendKey('${num}')">${num}</button>`; });
+        
+        const displayOps = [{ id: '+', label: '+' }, { id: '-', label: '-' }, { id: 'times', label: '×' }, { id: 'div', label: '÷' }, { id: 'sqrt', label: '√' }];
+        displayOps.forEach(op => {
+            if(roundOperators.includes(op.label)) { main.innerHTML += `<button class="key op" onclick="appendKey('${op.id}')">${op.label}</button>`; }
+        });
+
+        controls.innerHTML = `
+            <button class="key op" style="background:#e0f2fe; color:#0284c7; grid-column: span 1;" onclick="moveCursor('left')">◀</button>
+            <button class="key op" style="background:#e0f2fe; color:#0284c7; grid-column: span 1;" onclick="moveCursor('right')">▶</button>
+            <button class="key op" style="background:#fecaca; color:#b91c1c; grid-column: span 3;" onclick="backspace()">지우기</button>
+        `;
+    }
+
+    function toggleSwingInput() {
+        const target = document.getElementById('target-select').value;
+        const f2Container = document.getElementById('f2-container');
+        if (target === 'swing') {
+            f2Container.classList.remove('hidden');
+            document.getElementById('f1-label').innerText = "수식 1 입력 (타겟 1용)";
+        } else {
+            f2Container.classList.add('hidden');
+            document.getElementById('f1-label').innerText = "수식 입력";
+            activeMfId = 'mf1';
+        }
+    }
+
+    function moveCursor(dir) {
+        const mf = document.getElementById(activeMfId); mf.focus();
+        if (dir === 'left') mf.executeCommand(['moveToPreviousChar']);
+        else mf.executeCommand(['moveToNextChar']);
+    }
+
+    function appendKey(val) {
+        const mf = document.getElementById(activeMfId); mf.focus();
+        if (val === 'sqrt') mf.executeCommand(['insert', '\\sqrt{#0}']);
+        else if (val === 'times') mf.executeCommand(['insert', '\\times']);
+        else if (val === 'div') mf.executeCommand(['insert', '\\div']);
+        else mf.executeCommand(['insert', val]);
+    }
+
+    function backspace() {
+        const mf = document.getElementById(activeMfId); mf.focus();
+        mf.executeCommand(['deleteBackward']);
+    }
+
+    function submitTeamData(isAuto = false) {
+        const target = document.getElementById('target-select').value;
+        let f1 = document.getElementById('mf1').getValue() || "";
+        let f2 = document.getElementById('mf2').getValue() || "";
+
+        if (!isAuto) {
+            if (!f1 || (target === 'swing' && !f2)) {
+                alert('수식을 완성해주세요.'); return;
+            }
+        }
+
+        const teamData = {
+            ...gameState.teams[myTeamIdx],
+            target: target, f1: f1, f2: target === 'swing' ? f2 : '', submitted: true
+        };
+        
+        gameState.teams[myTeamIdx] = teamData;
+        lastDataString = ""; 
+        
+        // 학생이 제출(또는 강제 제출) 버튼을 누르면 1초의 딜레이도 없이 바로 화면을 대기 화면으로 넘깁니다. (체감 속도 개선)
+        document.getElementById('screen-submission').classList.add('hidden');
+        document.getElementById('screen-waiting').classList.remove('hidden');
+
+        pushGameState("submit", teamData);
+    }
+
+    function latexToJS(latex) {
+        let js = latex.replace(/\s+/g, '');
+        js = js.replace(/−/g, '-').replace(/\\minus/g, '-').replace(/\\times/g, '*').replace(/\\cdot/g, '*').replace(/\\ast/g, '*').replace(/\\div/g, '/');
+        
+        let previousJs;
+        do {
+            previousJs = js;
+            js = js.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '($1)/($2)');
+            js = js.replace(/\\frac(\d)(\d)/g, '($1)/($2)');
+            js = js.replace(/\\frac\{([^{}]+)\}(\d)/g, '($1)/($2)');
+            js = js.replace(/\\frac(\d)\{([^{}]+)\}/g, '($1)/($2)');
+        } while (js !== previousJs);
+        js = js.replace(/\\frac/g, '/');
+        
+        do {
+            previousJs = js;
+            js = js.replace(/\\sqrt\{([^{}]+)\}/g, 'Math.sqrt($1)');
+            js = js.replace(/\\sqrt(\d+(\.\d+)?)/g, 'Math.sqrt($1)');
+        } while (js !== previousJs);
+
+        js = js.replace(/\\[a-zA-Z]+/g, '').replace(/\\[,;:! ]/g, '').replace(/[{}]/g, '');
+        return js;
+    }
+
+    function evaluateFormula(latex, round) {
+        if (!latex) return { valid: false, val: null };
+        if (latex.includes('(') || latex.includes(')')) return { valid: false, val: null };
+
+        latex = latex.replace(/\\equiv/g, '=');
+        if (latex.includes('=')) latex = latex.split('=')[0];
+
+        let usedOpChars = [];
+        let plusCount = (latex.match(/\+/g) || []).length; for(let i=0; i<plusCount; i++) usedOpChars.push('+');
+        let minusCount = (latex.match(/[-−]/g) || []).length + (latex.match(/\\minus/g) || []).length; for(let i=0; i<minusCount; i++) usedOpChars.push('-');
+        let timesCount = (latex.match(/\\times/g) || []).length + (latex.match(/\\cdot/g) || []).length + (latex.match(/\*/g) || []).length; for(let i=0; i<timesCount; i++) usedOpChars.push('×');
+        let divCount = (latex.match(/\\div/g) || []).length + (latex.match(/\\frac/g) || []).length + (latex.match(/\//g) || []).length; for(let i=0; i<divCount; i++) usedOpChars.push('÷');
+        let sqrtCount = (latex.match(/\\sqrt/g) || []).length; for(let i=0; i<sqrtCount; i++) usedOpChars.push('√');
+
+        let sortedOpsUsed = usedOpChars.sort();
+        let sortedOpsReq = [...roundOperators].sort();
+        if (sortedOpsUsed.join(',') !== sortedOpsReq.join(',')) return { valid: false, val: null };
+
+        let js = latexToJS(latex);
+        
+        let numsUsed = (js.match(/\d+(\.\d+)?/g) || []).map(Number);
+        let sortedNumsUsed = numsUsed.sort((a,b)=>a-b);
+        let sortedNumsReq = [...roundNumbers].sort((a,b)=>a-b);
+        if (sortedNumsUsed.join(',') !== sortedNumsReq.join(',')) return { valid: false, val: null };
+
+        if (round === 3 || round === 4) {
+            let sqrtMatches = latex.match(/\\sqrt\s*\{([^}]*)\}/g);
+            if (sqrtMatches) {
+                for (let match of sqrtMatches) {
+                    let inside = match.replace(/\\sqrt\s*\{/, '').slice(0, -1);
+                    if (/[+\-−]|\\times|\\cdot|\\div|\\frac/.test(inside)) return { valid: false, val: null }; 
+                }
+            }
+        }
+
+        try {
+            let result = new Function('return ' + js)();
+            if (isNaN(result) || !isFinite(result)) return { valid: false, val: null };
+            return { valid: true, val: Math.round(result * 1000) / 1000 };
+        } catch(e) { return { valid: false, val: null }; }
+    }
+
+    function calculateResults() {
+        if(!isTeacherMode) return;
+        
+        gameState.timer = { endTime: 0, duration: 0, isRunning: false };
+        gameState.status = "result";
+        
+        let results = gameState.teams.map(t => {
+            let res = { ...t, valid1: false, v1: null, valid2: false, v2: null };
+            if (t.submitted) {
+                let e1 = evaluateFormula(t.f1, gameState.currentRound);
+                res.valid1 = e1.valid; res.v1 = e1.val;
+                if (t.target === 'swing') {
+                    let e2 = evaluateFormula(t.f2, gameState.currentRound);
+                    res.valid2 = e2.valid; res.v2 = e2.val;
+                }
+            }
+            return res;
+        });
+
+        let closest1_diff = Infinity; let winners1 = [];
+        let closest20_diff = Infinity; let winners20 = [];
+
+        results.forEach(t => {
+            if (!t.submitted) return;
+            if ((t.target === '1' || t.target === 'swing') && t.valid1) {
+                let diff = Math.abs(t.v1 - 1);
+                if (diff < closest1_diff) { closest1_diff = diff; winners1 = [t.id]; }
+                else if (diff === closest1_diff) { winners1.push(t.id); }
+            }
+            if ((t.target === '20' || t.target === 'swing')) {
+                let checkVal = t.target === 'swing' ? (t.valid2 ? t.v2 : null) : (t.valid1 ? t.v1 : null);
+                if (checkVal !== null) {
+                    let diff = Math.abs(checkVal - 20);
+                    if (diff < closest20_diff) { closest20_diff = diff; winners20 = [t.id]; }
+                    else if (diff === closest20_diff) { winners20.push(t.id); }
+                }
+            }
+        });
+
+        results.forEach(t => {
+            let scoreChange = 0;
+            if (t.submitted) {
+                let failedRule = (!t.valid1 || (t.target === 'swing' && !t.valid2));
+                if (failedRule) {
+                    scoreChange = t.target === 'swing' ? -10 : 0;
+                } else {
+                    if (t.target === '1') scoreChange = winners1.includes(t.id) ? 10 : 0;
+                    else if (t.target === '20') scoreChange = winners20.includes(t.id) ? 10 : 0;
+                    else if (t.target === 'swing') scoreChange = (winners1.includes(t.id) && winners20.includes(t.id)) ? 30 : -10;
+                }
+            }
+            gameState.teams[t.id].score += scoreChange;
+        });
+
+        pushGameState("updateState", gameState);
+        renderResultsHTML();
+    }
+
+    function renderResultsHTML() {
+        let html = `<table><tr><th>조</th><th>타겟</th><th>제출 수식</th><th>결과</th><th>최종 점수</th></tr>`;
+        
+        let results = gameState.teams.map(t => {
+            let res = { ...t, valid1: false, v1: null, valid2: false, v2: null };
+            if (t.submitted) {
+                let e1 = evaluateFormula(t.f1, gameState.currentRound);
+                res.valid1 = e1.valid; res.v1 = e1.val;
+                if (t.target === 'swing') {
+                    let e2 = evaluateFormula(t.f2, gameState.currentRound);
+                    res.valid2 = e2.valid; res.v2 = e2.val;
+                }
+            }
+            return res;
+        });
+
+        let closest1_diff = Infinity; let winners1 = [];
+        let closest20_diff = Infinity; let winners20 = [];
+        results.forEach(t => {
+            if (!t.submitted) return;
+            if ((t.target === '1' || t.target === 'swing') && t.valid1) {
+                let diff = Math.abs(t.v1 - 1);
+                if (diff < closest1_diff) { closest1_diff = diff; winners1 = [t.id]; }
+                else if (diff === closest1_diff) { winners1.push(t.id); }
+            }
+            if ((t.target === '20' || t.target === 'swing')) {
+                let checkVal = t.target === 'swing' ? (t.valid2 ? t.v2 : null) : (t.valid1 ? t.v1 : null);
+                if (checkVal !== null) {
+                    let diff = Math.abs(checkVal - 20);
+                    if (diff < closest20_diff) { closest20_diff = diff; winners20 = [t.id]; }
+                    else if (diff === closest20_diff) { winners20.push(t.id); }
+                }
+            }
+        });
+
+        results.forEach(t => {
+            if (!t.submitted) {
+                html += `<tr><td>${t.id + 1}조</td><td colspan="4" style="color:#dc2626;">시간 초과 (미제출)</td></tr>`;
+                return;
+            }
+
+            let isWin = false; let resultText = ""; let scoreChange = 0; let formulaText = "";
+            let failedRule = (!t.valid1 || (t.target === 'swing' && !t.valid2));
+            
+            let renderF1 = `<math-field readonly style="border:none; padding:0; display:inline-block; vertical-align:middle; width:auto; font-size:18px;">${t.f1}</math-field>`;
+            let renderF2 = t.f2 ? `<math-field readonly style="border:none; padding:0; display:inline-block; vertical-align:middle; width:auto; font-size:18px;">${t.f2}</math-field>` : "";
+
+            if (failedRule) {
+                isWin = false;
+                resultText = '탈락 (수식 오류)';
+                scoreChange = t.target === 'swing' ? -10 : 0;
+                formulaText = `<span class="fail-row">규칙 위반 또는 계산 불가</span>`;
+            } else {
+                if (t.target === '1') {
+                    isWin = winners1.includes(t.id);
+                    resultText = isWin ? '승리 (+10)' : '패배 (0)';
+                    scoreChange = isWin ? 10 : 0;
+                    formulaText = `<div>${renderF1} ➔ <strong>${t.v1}</strong></div>`;
+                } else if (t.target === '20') {
+                    isWin = winners20.includes(t.id);
+                    resultText = isWin ? '승리 (+10)' : '패배 (0)';
+                    scoreChange = isWin ? 10 : 0;
+                    formulaText = `<div>${renderF1} ➔ <strong>${t.v1}</strong></div>`;
+                } else if (t.target === 'swing') {
+                    let w1 = winners1.includes(t.id);
+                    let w2 = winners20.includes(t.id);
+                    isWin = w1 && w2;
+                    resultText = isWin ? '스윙 성공! (+30)' : '스윙 실패 (-10)';
+                    scoreChange = isWin ? 30 : -10;
+                    formulaText = `<div style="margin-bottom:8px;">[Low] ${renderF1} ➔ <strong>${t.v1}</strong></div> <div>[High] ${renderF2} ➔ <strong>${t.v2}</strong></div>`;
+                }
+            }
+
+            let color = isWin ? 'class="win-row"' : (failedRule ? 'style="background:#fef2f2;"' : '');
+
+            html += `<tr ${color}>
+                <td>${t.id + 1}조</td>
+                <td>${t.target === 'swing' ? 'Swing' : t.target}</td>
+                <td>${formulaText}</td>
+                <td style="font-weight:bold; color:${isWin ? '#047857' : (scoreChange < 0 ? '#dc2626' : '#4b5563')}">${resultText}</td>
+                <td><strong>${gameState.teams[t.id].score}</strong></td>
+            </tr>`;
+        });
+        html += `</table>`;
+
+        document.getElementById('result-content').innerHTML = html;
+
+        if (isTeacherMode) {
+            let btn = document.getElementById('next-btn');
+            if (gameState.currentRound >= maxRounds) {
+                btn.innerText = "🏆 최종 우승조 확인 및 게임 종료 🏆";
+                btn.style.backgroundColor = "#10b981"; btn.style.color = "white";
+                btn.onclick = () => {
+                    let maxScore = Math.max(...gameState.teams.map(t => t.score));
+                    let winnerTeams = gameState.teams.filter(t => t.score === maxScore).map(t => `${t.id + 1}조`);
+                    alert(`🎉 게임 종료! 🎉\n\n🏆 최종 우승: ${winnerTeams.join(', ')} (${maxScore}점)`);
+                    
+                    pushGameState("updateState", {
+                        currentRound: 1, status: "waiting", timer: { endTime: 0, duration: 0, isRunning: false },
+                        gameSeed: Math.random(), 
+                        teams: Array.from({length: 7}, (_, i) => ({ id: i, score: 0, target: '', f1: '', f2: '', submitted: false }))
+                    }, () => {
+                        location.reload(); 
+                    });
+                };
+            } else {
+                btn.innerText = "다음 라운드 준비";
+                btn.style.backgroundColor = ""; 
+                btn.onclick = nextRound;
+            }
+        }
+    }
+
+    function nextRound() {
+        if(!isTeacherMode) return;
+        if (gameState.currentRound >= maxRounds) return;
+        
+        gameState.currentRound++;
+        gameState.status = "playing";
+        gameState.timer = { endTime: 0, duration: 0, isRunning: false };
+        gameState.teams.forEach(t => { t.submitted = false; t.f1 = ''; t.f2 = ''; t.target = ''; });
+        
+        pushGameState("updateState", gameState);
+    }
+</script>
+
+</body>
+</html>
