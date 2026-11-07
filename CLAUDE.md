@@ -12,6 +12,12 @@
   - 서버/데이터: Google Apps Script 웹앱 (`GAS_URL`)에 fetch로 연결
 - `student/n-saat.html` — N-SAAT 캠퍼스 매핑 (학교 공간 수학적 모델링 시뮬레이터). **아직 빈 파일**
 
+## 별도 저장소에 있는 앱
+- **Vector Strike (수학 FPS)** — 이 저장소가 아니라 `hmj6879-afk/vector-strike`에 있다.
+  - 배포 주소: https://hmj6879-afk.github.io/vector-strike/ (포털 `index.html`에 카드로 연결됨)
+  - 작업하려면 이 폴더 옆에 `gh repo clone hmj6879-afk/vector-strike` 로 받는다.
+  - 기획서(PRD), 결정 사항, 진행 상황은 그 저장소의 `CLAUDE.md`에 있다.
+
 ## 작업 규칙
 - 모든 UI 문구와 주석은 한국어로 쓴다.
 - 디자인은 `index.html`의 톤을 따른다: Pretendard 폰트, `:root` CSS 변수
@@ -29,3 +35,4 @@
 - 포털 로비(`index.html`) 완성.
 - 수식 하이로우 게임 구현됨.
 - 생기부 매니저, 전자 서명부, N-SAAT는 파일만 만들어 둔 상태.
+- 2026-11-08: Vector Strike(수학 FPS)를 별도 저장소로 완성·배포하고, 포털에 카드를 추가함.
