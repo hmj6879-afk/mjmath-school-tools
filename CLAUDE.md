@@ -29,5 +29,3 @@
 - 포털 로비(`index.html`) 완성.
 - 수식 하이로우 게임 구현됨.
 - 생기부 매니저, 전자 서명부, N-SAAT는 파일만 만들어 둔 상태.
-- 알려진 문제: `index.html`의 생기부 카드 링크가 `./teacher/saemggibu.html`(오타)로 되어 있다.
-  실제 파일명은 `saenggibu.html`.
